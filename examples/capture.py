@@ -1,8 +1,8 @@
 from pycap import new_ethernet_sniffer_socket
-from pycap.constants import PROTOCOL_ETH, PROTOCOL_IP
+from pycap.constants import PROTOCOL_ETH, PROTOCOL_IP, PROTOCOL_TCP
 from pycap.ethernet import parse_ethernet_packet_info, unpack_ethernet_packet
-
 from pycap.ip import unpack_ip_packet
+from pycap.tcp import unpack_tcp_packet
 
 
 # def send_ethernet():
@@ -24,9 +24,9 @@ def main():
         if eth_header.eth_type == PROTOCOL_IP:
             ip_header, ip_payload = unpack_ip_packet(payload)
             print(PROTOCOL_IP, ip_header, ip_payload)
-            # if ip_header.protocol == 'tcp':
-            #     tcp_header, tcp_payload = parse_tcp_packet(ip_payload)
-            #     print('tcp', tcp_header)
+            if ip_header.protocol == PROTOCOL_TCP:
+                tcp_header, tcp_payload = unpack_tcp_packet(ip_payload)
+                print(PROTOCOL_TCP, tcp_header, tcp_payload)
             # elif ip_header.protocol == 'icmp':
             #     print('icmp', parse_icmp_packet(ip_payload))
         # elif eth_header.eth_type == 'arp':
