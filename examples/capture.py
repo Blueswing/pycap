@@ -1,7 +1,8 @@
-from pprint import pprint
-
 from pycap import new_ethernet_sniffer_socket
+from pycap.constants import PROTOCOL_ETH, PROTOCOL_IP
 from pycap.ethernet import parse_ethernet_packet_info, unpack_ethernet_packet
+
+from pycap.ip import unpack_ip_packet
 
 
 # def send_ethernet():
@@ -17,18 +18,17 @@ def main():
     while True:
         packet, address_info = sniffer.recvfrom(1500)
         packet_info = parse_ethernet_packet_info(address_info)
-        pprint(packet_info)
+        print('info', packet_info)
         eth_header, payload = unpack_ethernet_packet(packet)
-        print(eth_header, payload)
-        # print('eth', packet_info, eth_header)
-        # if eth_header.eth_type == 'ip':
-        #     ip_header, ip_payload = parse_ipv4_packet(payload)
-        #     print('ip', ip_header, ip_payload)
-        #     if ip_header.protocol == 'tcp':
-        #         tcp_header, tcp_payload = parse_tcp_packet(ip_payload)
-        #         print('tcp', tcp_header)
-        #     elif ip_header.protocol == 'icmp':
-        #         print('icmp', parse_icmp_packet(ip_payload))
+        print(PROTOCOL_ETH, eth_header, payload)
+        if eth_header.eth_type == PROTOCOL_IP:
+            ip_header, ip_payload = unpack_ip_packet(payload)
+            print(PROTOCOL_IP, ip_header, ip_payload)
+            # if ip_header.protocol == 'tcp':
+            #     tcp_header, tcp_payload = parse_tcp_packet(ip_payload)
+            #     print('tcp', tcp_header)
+            # elif ip_header.protocol == 'icmp':
+            #     print('icmp', parse_icmp_packet(ip_payload))
         # elif eth_header.eth_type == 'arp':
         #     print('arp', payload)
         # elif eth_header.eth_type == 'rarp':
@@ -39,19 +39,7 @@ def main():
         #     print('parser not found', eth_header.eth_type)
 
 
-def demo_mac():
-    print(get_interface_names())
-    if_name = 'wlp3s0'
-    mac = get_mac_address(if_name)
-    print(mac.as_int())
-    print(mac.as_bytes())
-    print(mac.as_str())
-
-
 if __name__ == '__main__':
-    # demo_mac()
-    # demo_ip()
-    # send_ethernet()
     try:
         main()
     except KeyboardInterrupt:

@@ -1,7 +1,7 @@
 import struct
 import subprocess
 from functools import lru_cache
-from typing import Union
+from typing import Union, Tuple
 
 from .base import DataObject
 from .constants import *
@@ -168,7 +168,7 @@ class Ethernet802_3Header(EthernetHeader):
         self.snap = 0
 
 
-def unpack_ethernet_packet(packet):
+def unpack_ethernet_packet(packet) -> Tuple[Union[EthernetIIHeader, Ethernet802_3Header], bytes]:
     """
     Ethernet II header
         6 bytes destination MAC address
