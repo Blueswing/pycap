@@ -154,6 +154,7 @@ class EthernetHeader(DataObject):
 
 
 class EthernetIIHeader(EthernetHeader):
+
     def __init__(self):
         super().__init__()
         self.eth_type = ''
@@ -170,16 +171,20 @@ class Ethernet802_3Header(EthernetHeader):
 
 def unpack_ethernet_packet(packet) -> Tuple[Union[EthernetIIHeader, Ethernet802_3Header], bytes]:
     """
-    Ethernet II header
+    Ethernet II header, RFC 894
         6 bytes destination MAC address
         6 bytes source MAC address
         2 bytes Ethernet type
+        46 ~ 1500 bytes payload
 
-    Ethernet 802.3 header
+
+    Ethernet 802.3 header, RFC 1042, IEEE 802
         6 bytes destination MAC address
         6 bytes source MAC address
         2 bytes length
-        ...
+        3 bytes LLC
+        5 bytes SNAP
+        38 ~ 1492 bytes payload
     """
     header, payload = packet[:14], packet[14:]
     res = struct.unpack(_ETH_II_FMT, header)

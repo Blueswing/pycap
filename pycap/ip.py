@@ -5,7 +5,29 @@ from typing import Tuple, Union
 
 from .base import DataObject
 from .constants import *
+"""
+Internet header format
 
+    0                   1                   2                   3   
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |Version|  IHL  |Type of Service|          Total Length         |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |         Identification        |Flags|      Fragment Offset    |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |  Time to Live |    Protocol   |         Header Checksum       |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |                       Source Address                          |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |                    Destination Address                        |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |                    Options                    |    Padding    |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+
+References:
+    https://www.rfc-editor.org/rfc/rfc791.txt
+"""
 _IP_HEADER_FMT = '>BBHHHBBHII'
 
 _PROTO_MAP = {
@@ -56,9 +78,9 @@ def unpack_ip_packet(data: bytes) -> Tuple[Union[IPv4Header, IPv6Header], bytes]
     16 bit  total length
     16 bit  identification, used to differentiate packets from different datagrams
     3 bit   flags, used to control fragments;
-                1st. bit is not used
-                2nd. bit: DF, don't fragment
-                3rd. bit: MF, more fragments
+                1st. bit is not used, must be zero
+                2nd. bit: DF, 0 = may fragment, 1 = don't fragment
+                3rd. bit: MF, 0 = last fragment, 1 = more fragments
     13 bit  offsest in 8 bytes
     8 bit   ttl
     8 bit   protocol, the upper layer protocol
