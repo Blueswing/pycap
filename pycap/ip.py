@@ -1,10 +1,12 @@
+import copy
 import ipaddress
 import socket
 import struct
 from typing import Tuple, Union
 
-from .base import DataObject
+from .base import Header
 from .constants import *
+
 """
 Internet header format
 
@@ -39,6 +41,12 @@ _PROTO_MAP = {
 }
 
 
+def describe_protocol(proto):
+    if proto in _PROTO_MAP:
+        return _PROTO_MAP[proto]
+    return f'Unknown {proto}'
+
+
 def get_local_ip_address():
     return ipaddress.IPv4Address(socket.gethostbyname(socket.gethostname()))
 
@@ -47,27 +55,41 @@ def get_ip_address(host):
     return ipaddress.IPv4Address(socket.gethostbyname(host))
 
 
-class IPv4Header(DataObject):
+class IPv4Header(Header):
 
-    def __init__(self):
-        self.version = None
-        self.header_len = None
-        self.tos = None
-        self.total_len = None
-        self.id_frag = None
-        self.df = None
-        self.mf = None
-        self.offset = None
-        self.ttl = None
-        self.protocol = None
-        self.checksum = None
-        self.src_ip = None
-        self.dst_ip = None
+    def __init__(self, src_ip, dst_ip):
+        self.version = 4
+        self.header_len = 20
+        self.tos = 0
+        self.total_len = 20
+        self.id_frag = 0
+        self.df = 1
+        self.mf = 0
+        self.offset = 0
+        self.ttl = 255
+        self.protocol = 0
+        self.checksum = 0
+        self.src_ip = src_ip
+        self.dst_ip = dst_ip
         self.options = b''
 
+    def describe(self) -> dict:
+        dct = copy.copy(self.__dict__)
+        dct['src_ip'] = ipaddress.IPv4Address(self.src_ip)
+        dct['dst_ip'] = ipaddress.IPv4Address(self.dst_ip)
+        dct['protocol'] = describe_protocol(self.protocol)
+        return dct
 
-class IPv6Header:
-    pass
+
+class IPv6Header(Header):
+    def __init__(self, src_ip, dst_ip):
+        self.version = 6
+        self.header_len = 0
+        self.src_ip = src_ip
+        self.dst_ip = dst_ip
+
+    def describe(self) -> dict:
+        raise NotImplementedError()
 
 
 def unpack_ip_packet(data: bytes) -> Tuple[Union[IPv4Header, IPv6Header], bytes]:
@@ -94,8 +116,8 @@ def unpack_ip_packet(data: bytes) -> Tuple[Union[IPv4Header, IPv6Header], bytes]
     byte_0 = data[0]
     version = byte_0 >> 4
     if version == 4:
-        header = IPv4Header()
         res = struct.unpack(_IP_HEADER_FMT, data[:20])
+        header = IPv4Header(res[8], res[9])
         header.version = version
         header.header_len = (byte_0 & 0xf) * 4  # bytes
         header.tos = res[1]
@@ -106,10 +128,8 @@ def unpack_ip_packet(data: bytes) -> Tuple[Union[IPv4Header, IPv6Header], bytes]
         header.mf = bool(ident_3 & 0x1)
         header.offset = (res[4] & 0x1fff) * 8  # bytes
         header.ttl = res[5]
-        header.protocol = _PROTO_MAP[res[6]]
+        header.protocol = res[6]
         header.checksum = res[7]
-        header.src_ip = ipaddress.IPv4Address(res[8])
-        header.dst_ip = ipaddress.IPv4Address(res[9])
         opt_len = header.header_len - 20
         if opt_len:
             header.options = data[20:20 + opt_len]
@@ -117,6 +137,6 @@ def unpack_ip_packet(data: bytes) -> Tuple[Union[IPv4Header, IPv6Header], bytes]
         return header, payload
     elif version == 6:
         # todo
-        return IPv6Header(), b''
+        return IPv6Header(0, 0), b''
     else:
         raise ValueError(version)

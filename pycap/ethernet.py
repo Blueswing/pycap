@@ -1,9 +1,10 @@
 import struct
 import subprocess
+from abc import ABCMeta
 from functools import lru_cache
 from typing import Union, Tuple
 
-from .base import DataObject
+from .base import Header
 from .constants import *
 
 ETH_TYPE_IP = 0x0800
@@ -84,7 +85,7 @@ def get_interface_names():
 
 class MACAddress:
 
-    def __init__(self, mac: Union[int, str]):
+    def __init__(self, mac: Union[int, bytes, str]):
         if isinstance(mac, str):
             self._mac_s = mac
             tmp = mac.split(':')
@@ -95,10 +96,14 @@ class MACAddress:
                 mac_i <<= 8
                 mac_i += int(x, 16)
             self._mac_i = mac_i
-            self._mac_b = self._mac_i.to_bytes(6, 'big')
+            self._mac_b = self._mac_i.to_bytes(6, BYTE_ORDER_NET)
+        elif isinstance(mac, bytes):
+            self._mac_b = mac[:6]
+            self._mac_i = int.from_bytes(self._mac_b, BYTE_ORDER_NET)
+            self._mac_s = ':'.join('{:02x}'.format(a) for a in self._mac_b)
         else:
             self._mac_i = mac
-            self._mac_b = mac.to_bytes(6, 'big')
+            self._mac_b = mac.to_bytes(6, BYTE_ORDER_NET)
             self._mac_s = ':'.join('{:02x}'.format(a) for a in self._mac_b)
 
     def as_int(self):
@@ -111,10 +116,10 @@ class MACAddress:
         return self._mac_s
 
     def __str__(self):
-        return self._mac_s
+        return f'MACAddress(\'{self._mac_s}\')'
 
     def __repr__(self):
-        return self._mac_s
+        return self.__str__()
 
 
 @lru_cache(10)
@@ -125,48 +130,79 @@ def get_mac_address(interface_name) -> MACAddress:
     return MACAddress(res)
 
 
-class EthernetPacketInfo(DataObject):
+def describe_eth_type(eth_type: int):
+    if eth_type in _ETH_TYPE_MAP:
+        return _ETH_TYPE_MAP[eth_type]
+    return f'Unknown {eth_type}'
+
+
+def describe_packet_type(packet_type: int):
+    if packet_type in _LINK_LAYER_PACKET_TYPE_MAP:
+        return _LINK_LAYER_PACKET_TYPE_MAP[packet_type]
+    return f'Unknown {packet_type}'
+
+
+class EthernetPacketInfo(Header):
 
     def __init__(self):
         self.net_if = ''
-        self.protocol = ''
-        self.src_mac = None
-        self.packet_type = ''
+        self.protocol = 0
+        self.src_mac = 0
+        self.packet_type = 0
         self.address_type = 0
+
+    def describe(self) -> dict:
+        return {
+            'network_interface': self.net_if,
+            'protocol': describe_eth_type(self.protocol),
+            'src_mac': MACAddress(self.src_mac),
+            'packet_type': describe_packet_type(self.packet_type),
+            'address_type': self.address_type
+        }
 
 
 def parse_ethernet_packet_info(raw_data):
     net_if, proto, packet_type, address_type, mac = raw_data
     obj = EthernetPacketInfo()
     obj.net_if = net_if
-    obj.protocol = _ETH_TYPE_MAP.get(proto, '%#x' % proto)
-    obj.src_mac = MACAddress(':'.join('%x' % x for x in mac))
-    obj.packet_type = _LINK_LAYER_PACKET_TYPE_MAP.get(packet_type, '%#x' % packet_type)
+    obj.protocol = proto
+    obj.src_mac = int.from_bytes(mac, BYTE_ORDER_NET)
+    obj.packet_type = packet_type
     obj.address_type = address_type
     return obj
 
 
-class EthernetHeader(DataObject):
+class EthernetHeader(Header, metaclass=ABCMeta):
 
-    def __init__(self):
-        self.dst_mac = None
-        self.src_mac = None
+    def __init__(self, dst_mac, src_mac):
+        self.dst_mac = dst_mac
+        self.src_mac = src_mac
 
 
 class EthernetIIHeader(EthernetHeader):
 
-    def __init__(self):
-        super().__init__()
-        self.eth_type = ''
+    def __init__(self, dst_mac, src_mac):
+        super().__init__(dst_mac, src_mac)
+        self.eth_type = 0
+
+    def describe(self) -> dict:
+        return {
+            'src_mac': MACAddress(self.src_mac),
+            'dst_mac': MACAddress(self.dst_mac),
+            'eth_type': describe_eth_type(self.eth_type)
+        }
 
 
 class Ethernet802_3Header(EthernetHeader):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, dst_mac, src_mac):
+        super().__init__(dst_mac, src_mac)
         self.length = 0
         self.llc = 0
         self.snap = 0
+
+    def describe(self) -> dict:
+        return {}
 
 
 def unpack_ethernet_packet(packet) -> Tuple[Union[EthernetIIHeader, Ethernet802_3Header], bytes]:
@@ -188,15 +224,12 @@ def unpack_ethernet_packet(packet) -> Tuple[Union[EthernetIIHeader, Ethernet802_
     """
     header, payload = packet[:14], packet[14:]
     res = struct.unpack(_ETH_II_FMT, header)
-    dst_mac = ':'.join('%x' % x for x in res[:6])
-    src_mac = ':'.join('%x' % x for x in res[6:12])
+    dst_mac = int.from_bytes(res[:6], BYTE_ORDER_NET)
+    src_mac = int.from_bytes(res[6:12], BYTE_ORDER_NET)
     if res[12] > 1500:
-        hdr = EthernetIIHeader()
-        eth_type = _ETH_TYPE_MAP.get(res[12], '%#x' % res[12])
-        hdr.eth_type = eth_type
+        hdr = EthernetIIHeader(dst_mac, src_mac)
+        hdr.eth_type = res[12]
     else:
-        hdr = Ethernet802_3Header()
+        hdr = Ethernet802_3Header(dst_mac, src_mac)
         # todo
-    hdr.dst_mac = dst_mac
-    hdr.src_mac = src_mac
     return hdr, payload

@@ -1,4 +1,7 @@
-class DataObject:
+from typing import Optional
+
+
+class Header:
 
     def __str__(self):
         return str(self.__dict__)
@@ -6,8 +9,11 @@ class DataObject:
     def __repr__(self):
         return str(self.__dict__)
 
+    @property
+    def upper_layer_protocol(self) -> Optional[str]:
+        return None
+
     def describe(self) -> dict:
         raise NotImplementedError()
 
 
-BYTE_ORDER = 'big'

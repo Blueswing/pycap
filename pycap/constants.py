@@ -1,3 +1,5 @@
+BYTE_ORDER_NET = 'big'
+
 PROTOCOL_ETH = 'Ethernet'
 PROTOCOL_IP = 'IP'
 PROTOCOL_ARP = 'ARP'

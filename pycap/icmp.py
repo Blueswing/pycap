@@ -1,17 +1,21 @@
 import struct
-
-from .base import DataObject
+import copy
+from .base import Header
 
 _ICMP_RESPONSE_FMT = '>BBHHH'
 
 
-class ICMPHeader(DataObject):
+class ICMPHeader(Header):
+
     def __init__(self):
         self.icmp_type = 0
         self.code = 0
         self.checksum = 0
         self.identifier = 0
         self.seq_number = 0
+
+    def describe(self) -> dict:
+        return copy.copy(self.__dict__)
 
 
 def parse_icmp_packet(data: bytes):

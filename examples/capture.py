@@ -1,5 +1,6 @@
 from pycap import new_ethernet_sniffer_socket
-from pycap.constants import PROTOCOL_ETH, PROTOCOL_IP, PROTOCOL_TCP
+from pycap.arp import unpack_arp_packet
+from pycap.constants import PROTOCOL_ETH, PROTOCOL_IP, PROTOCOL_TCP, PROTOCOL_ARP
 from pycap.ethernet import parse_ethernet_packet_info, unpack_ethernet_packet
 from pycap.ip import unpack_ip_packet
 from pycap.tcp import unpack_tcp_packet
@@ -18,19 +19,21 @@ def main():
     while True:
         packet, address_info = sniffer.recvfrom(1500)
         packet_info = parse_ethernet_packet_info(address_info)
-        print('info', packet_info)
+        # print('info', packet_info, packet_info.describe())
         eth_header, payload = unpack_ethernet_packet(packet)
-        print(PROTOCOL_ETH, eth_header, payload)
-        if eth_header.eth_type == PROTOCOL_IP:
+        # print(PROTOCOL_ETH, eth_header, eth_header.describe())
+        if eth_header.eth_type == 0x0800:
             ip_header, ip_payload = unpack_ip_packet(payload)
-            print(PROTOCOL_IP, ip_header, ip_payload)
-            if ip_header.protocol == PROTOCOL_TCP:
-                tcp_header, tcp_payload = unpack_tcp_packet(ip_payload)
-                print(PROTOCOL_TCP, tcp_header, tcp_payload)
+            # print(PROTOCOL_IP, ip_header, ip_header.describe())
+            # if ip_header.protocol == PROTOCOL_TCP:
+                # tcp_header, tcp_payload = unpack_tcp_packet(ip_payload)
+                # print(PROTOCOL_TCP, tcp_header, tcp_payload)
             # elif ip_header.protocol == 'icmp':
             #     print('icmp', parse_icmp_packet(ip_payload))
-        # elif eth_header.eth_type == 'arp':
-        #     print('arp', payload)
+        elif eth_header.eth_type == 0x0806:
+
+            hdr, arp_payload = unpack_arp_packet(payload)
+            print(PROTOCOL_ARP, hdr.describe(), arp_payload)
         # elif eth_header.eth_type == 'rarp':
         #     print('rarp', payload)
         # elif eth_header.eth_type == 'ipv6':

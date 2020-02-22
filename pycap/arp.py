@@ -1,6 +1,9 @@
+import ipaddress
 import struct
 
-from .base import DataObject, BYTE_ORDER
+from .base import Header
+from .constants import BYTE_ORDER_NET
+from .ethernet import ETH_TYPE_IP, MACAddress, describe_eth_type
 
 _FMT_ARP_FIXED_HDR = '>HHBBH'
 _STRUCT_ARP_FIXED_HDR = struct.Struct(_FMT_ARP_FIXED_HDR)
@@ -17,7 +20,7 @@ def describe_hardware_type(hardware_type: int):
     return f'Unknown {hardware_type}'
 
 
-class ARPHeader(DataObject):
+class ARPHeader(Header):
 
     def __init__(self):
         self.hardware_type = 0
@@ -31,13 +34,20 @@ class ARPHeader(DataObject):
         self.dst_protocol_addr = 0
 
     def describe(self):
-        return {
+        dct = {
             'hardware_type': describe_hardware_type(self.hardware_type),
-            'protocol': self.protocol,
+            'protocol': describe_eth_type(self.protocol),
             'hardware_addr_len': self.hardware_addr_len,
             'protocol_addr_len': self.protocol_addr_len,
-            'opcode': self.opcode,
-        }
+            'opcode': self.opcode}
+        if self.protocol == ETH_TYPE_IP:
+            dct['src_hardware_addr'] = MACAddress(self.src_hardware_addr)
+            dct['src_protocol_addr'] = ipaddress.IPv4Address(self.src_protocol_addr)
+            dct['dst_hardware_addr'] = MACAddress(self.dst_hardware_addr)
+            dct['dst_protocol_addr'] = ipaddress.IPv4Address(self.dst_protocol_addr)
+            return dct
+        raise ValueError(self.protocol)
+
 
 
 def unpack_arp_packet(packet: bytes):
@@ -60,14 +70,14 @@ def unpack_arp_packet(packet: bytes):
         packet[:_LEN_ARP_FIXED_HDR])
     packet = packet[_LEN_ARP_FIXED_HDR:]
     idx_end = hdr.hardware_addr_len
-    hdr.src_hardware_addr = int.from_bytes(packet[:idx_end], BYTE_ORDER)
+    hdr.src_hardware_addr = int.from_bytes(packet[:idx_end], BYTE_ORDER_NET)
     idx_start = idx_end
     idx_end += hdr.protocol_addr_len
-    hdr.src_protocol_addr = int.from_bytes(packet[idx_start:idx_start], BYTE_ORDER)
+    hdr.src_protocol_addr = int.from_bytes(packet[idx_start:idx_start], BYTE_ORDER_NET)
     idx_start = idx_end
     idx_end += hdr.hardware_addr_len
-    hdr.dst_hardware_addr = int.from_bytes(packet[idx_start:idx_end], BYTE_ORDER)
+    hdr.dst_hardware_addr = int.from_bytes(packet[idx_start:idx_end], BYTE_ORDER_NET)
     idx_start = idx_end
     idx_end += hdr.protocol_addr_len
-    hdr.dst_protocol_addr = int.from_bytes(packet[idx_start:idx_end], BYTE_ORDER)
+    hdr.dst_protocol_addr = int.from_bytes(packet[idx_start:idx_end], BYTE_ORDER_NET)
     return hdr, packet[idx_end:]

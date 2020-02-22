@@ -1,17 +1,18 @@
+import copy
 import struct
 from typing import Tuple
 
-from .base import DataObject
+from .base import Header
 
 _TCP_HDR_FMT = '>HHIIHHHH'
 struct_ = struct.Struct(_TCP_HDR_FMT)
 
 
-class TCPHeader(DataObject):
+class TCPHeader(Header):
 
-    def __init__(self):
-        self.src_port = 0
-        self.dst_port = 0
+    def __init__(self, src_port, dst_port):
+        self.src_port = src_port
+        self.dst_port = dst_port
         self.seq_id = 0
         self.ack_id = 0
         self.header_len = 0
@@ -25,13 +26,15 @@ class TCPHeader(DataObject):
         self.checksum = 0
         self.offset = 0
 
+    def describe(self) -> dict:
+        return copy.copy(self.__dict__)
+
 
 def unpack_tcp_packet(data: bytes) -> Tuple[TCPHeader, bytes]:
-    header = TCPHeader()
+    header = TCPHeader(0, 0)
     header.src_port, header.dst_port, header.seq_id, header.ack_id, \
         tmp, header.window_size, header.checksum, header.offset = \
         struct_.unpack(data[:struct_.size])
-
     header.fin = bool(tmp & 0x1)
     tmp >>= 1
     header.syn = bool(tmp & 0x1)
