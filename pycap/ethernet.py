@@ -2,7 +2,7 @@ import struct
 import subprocess
 from abc import ABCMeta
 from functools import lru_cache
-from typing import Union, Tuple
+from typing import Union, Tuple, Optional
 
 from .base import Header
 from .constants import *
@@ -184,6 +184,10 @@ class EthernetIIHeader(EthernetHeader):
     def __init__(self, dst_mac, src_mac):
         super().__init__(dst_mac, src_mac)
         self.eth_type = 0
+
+    @property
+    def upper_layer_protocol(self) -> Optional[str]:
+        return describe_eth_type(self.eth_type)
 
     def describe(self) -> dict:
         return {

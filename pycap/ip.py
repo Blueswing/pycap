@@ -2,7 +2,7 @@ import copy
 import ipaddress
 import socket
 import struct
-from typing import Tuple, Union
+from typing import Tuple, Union, Optional
 
 from .base import Header
 from .constants import *
@@ -72,6 +72,10 @@ class IPv4Header(Header):
         self.src_ip = src_ip
         self.dst_ip = dst_ip
         self.options = b''
+
+    @property
+    def upper_layer_protocol(self) -> Optional[str]:
+        return describe_protocol(self.protocol)
 
     def describe(self) -> dict:
         dct = copy.copy(self.__dict__)

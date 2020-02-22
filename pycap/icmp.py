@@ -18,7 +18,7 @@ class ICMPHeader(Header):
         return copy.copy(self.__dict__)
 
 
-def parse_icmp_packet(data: bytes):
+def unpack_icmp_packet(data: bytes):
     _type, code, checksum, identifier, seq_number = struct.unpack(
         _ICMP_RESPONSE_FMT, data[:8])
     header = ICMPHeader()

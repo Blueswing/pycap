@@ -9,15 +9,21 @@ _FMT_ARP_FIXED_HDR = '>HHBBH'
 _STRUCT_ARP_FIXED_HDR = struct.Struct(_FMT_ARP_FIXED_HDR)
 _LEN_ARP_FIXED_HDR = _STRUCT_ARP_FIXED_HDR.size
 
-_MAP_HARDWARE_TYPE = {
-    1: 'Ethernet'
-}
+_MAP_HARDWARE_TYPE = {1: 'Ethernet'}
+
+_MAP_OPCODE = {1: 'request', 2: 'reply'}
 
 
 def describe_hardware_type(hardware_type: int):
     if hardware_type in _MAP_HARDWARE_TYPE:
         return _MAP_HARDWARE_TYPE[hardware_type]
     return f'Unknown {hardware_type}'
+
+
+def describe_opcode(opcode: int):
+    if opcode in _MAP_OPCODE:
+        return _MAP_OPCODE[opcode]
+    return f'Unknown {opcode}'
 
 
 class ARPHeader(Header):
@@ -39,7 +45,7 @@ class ARPHeader(Header):
             'protocol': describe_eth_type(self.protocol),
             'hardware_addr_len': self.hardware_addr_len,
             'protocol_addr_len': self.protocol_addr_len,
-            'opcode': self.opcode}
+            'opcode': describe_opcode(self.opcode)}
         if self.protocol == ETH_TYPE_IP:
             dct['src_hardware_addr'] = MACAddress(self.src_hardware_addr)
             dct['src_protocol_addr'] = ipaddress.IPv4Address(self.src_protocol_addr)
@@ -47,7 +53,6 @@ class ARPHeader(Header):
             dct['dst_protocol_addr'] = ipaddress.IPv4Address(self.dst_protocol_addr)
             return dct
         raise ValueError(self.protocol)
-
 
 
 def unpack_arp_packet(packet: bytes):
