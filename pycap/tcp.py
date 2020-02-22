@@ -2,7 +2,7 @@ import copy
 import struct
 from typing import Tuple
 
-from .base import Header
+from .base import Header, Protocol
 
 _TCP_HDR_FMT = '>HHIIHHHH'
 struct_ = struct.Struct(_TCP_HDR_FMT)
@@ -30,21 +30,23 @@ class TCPHeader(Header):
         return copy.copy(self.__dict__)
 
 
-def unpack_tcp_packet(data: bytes) -> Tuple[TCPHeader, bytes]:
-    header = TCPHeader(0, 0)
-    header.src_port, header.dst_port, header.seq_id, header.ack_id, \
+class TCP(Protocol):
+
+    def unpack_data(self, data: bytes) -> Tuple[Header, bytes]:
+        header = TCPHeader(0, 0)
+        header.src_port, header.dst_port, header.seq_id, header.ack_id, \
         tmp, header.window_size, header.checksum, header.offset = \
-        struct_.unpack(data[:struct_.size])
-    header.fin = bool(tmp & 0x1)
-    tmp >>= 1
-    header.syn = bool(tmp & 0x1)
-    tmp >>= 1
-    header.rst = bool(tmp & 0x1)
-    tmp >>= 1
-    header.psh = bool(tmp & 0x1)
-    tmp >>= 1
-    header.ack = bool(tmp & 0x1)
-    tmp >>= 1
-    header.urg = bool(tmp & 0x1)
-    header.header_len = 4 * (tmp >> 7)
-    return header, data[struct_.size:]
+            struct_.unpack(data[:struct_.size])
+        header.fin = bool(tmp & 0x1)
+        tmp >>= 1
+        header.syn = bool(tmp & 0x1)
+        tmp >>= 1
+        header.rst = bool(tmp & 0x1)
+        tmp >>= 1
+        header.psh = bool(tmp & 0x1)
+        tmp >>= 1
+        header.ack = bool(tmp & 0x1)
+        tmp >>= 1
+        header.urg = bool(tmp & 0x1)
+        header.header_len = 4 * (tmp >> 7)
+        return header, data[struct_.size:]

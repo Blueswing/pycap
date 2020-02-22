@@ -1,7 +1,8 @@
 import copy
 import struct
+from typing import Tuple
 
-from .base import Header
+from .base import Header, Protocol
 
 _FMT_DNS_FIXED_HDR = '>HHHHHH'
 _STRUCT_DNS_FIXED_HDR = struct.Struct(_FMT_DNS_FIXED_HDR)
@@ -44,27 +45,29 @@ class DNSHeader(Header):
         return dct
 
 
-def unpack_dns_packet(packet: bytes):
-    identifier, id2, question, answer, auth, addition = _STRUCT_DNS_FIXED_HDR.unpack(packet[:12])
-    hdr = DNSHeader()
-    hdr.identifier = identifier
-    hdr.response_code = id2 & 0xf
-    id2 >>= 4
-    hdr.z = id2 & 0x7
-    id2 >>= 3
-    hdr.recursion_available = bool(id2 & 0x1)
-    id2 >>= 1
-    hdr.recursion_desired = bool(id2 & 0x1)
-    id2 >>= 1
-    hdr.truncation = bool(id2 & 0x1)
-    id2 >>= 1
-    hdr.authoritative_answer = bool(id2 & 0x1)
-    id2 >>= 1
-    hdr.opcode = id2 & 0xf
-    id2 >>= 4
-    hdr.qr = id2 & 0x1
-    hdr.question_count = question
-    hdr.answer_count = answer
-    hdr.authority = auth
-    hdr.additional_info = addition
-    return hdr, packet[12:]
+class DNS(Protocol):
+
+    def unpack_data(self, data: bytes) -> Tuple[Header, bytes]:
+        identifier, id2, question, answer, auth, addition = _STRUCT_DNS_FIXED_HDR.unpack(data[:12])
+        hdr = DNSHeader()
+        hdr.identifier = identifier
+        hdr.response_code = id2 & 0xf
+        id2 >>= 4
+        hdr.z = id2 & 0x7
+        id2 >>= 3
+        hdr.recursion_available = bool(id2 & 0x1)
+        id2 >>= 1
+        hdr.recursion_desired = bool(id2 & 0x1)
+        id2 >>= 1
+        hdr.truncation = bool(id2 & 0x1)
+        id2 >>= 1
+        hdr.authoritative_answer = bool(id2 & 0x1)
+        id2 >>= 1
+        hdr.opcode = id2 & 0xf
+        id2 >>= 4
+        hdr.qr = id2 & 0x1
+        hdr.question_count = question
+        hdr.answer_count = answer
+        hdr.authority = auth
+        hdr.additional_info = addition
+        return hdr, data[12:]

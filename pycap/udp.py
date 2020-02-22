@@ -1,8 +1,8 @@
 import copy
 import struct
-from typing import Optional
+from typing import Optional, Tuple
 
-from .base import Header
+from .base import Header, Protocol
 from .constants import PROTOCOL_DNS, PROTOCOL_MDNS
 
 _UDP_HDR_FMT = '>HHHH'
@@ -34,9 +34,11 @@ class UDPHeader(Header):
         return f'Unknown'
 
 
-def unpack_udp_packet(packet: bytes):
-    p_src, p_dst, length, checksum = struct_.unpack(packet[:8])
-    hdr = UDPHeader(p_src, p_dst)
-    hdr.total_length = length
-    hdr.checksum = checksum
-    return hdr, packet[8:]
+class UDP(Protocol):
+
+    def unpack_data(self, data: bytes) -> Tuple[Header, bytes]:
+        p_src, p_dst, length, checksum = struct_.unpack(data[:8])
+        hdr = UDPHeader(p_src, p_dst)
+        hdr.total_length = length
+        hdr.checksum = checksum
+        return hdr, data[8:]

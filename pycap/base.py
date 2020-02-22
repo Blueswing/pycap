@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Tuple
 
 
 class Header:
@@ -17,3 +17,11 @@ class Header:
         raise NotImplementedError()
 
 
+class Protocol:
+
+    def unpack_data(self, data: bytes) -> Tuple[Header, bytes]:
+        raise NotImplementedError()
+
+
+class NotSupportedError(Exception):
+    pass

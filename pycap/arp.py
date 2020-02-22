@@ -1,9 +1,10 @@
-import ipaddress
 import struct
+from typing import Tuple
 
-from .base import Header
+from .base import Header, Protocol, NotSupportedError
 from .constants import BYTE_ORDER_NET
-from .ethernet import ETH_TYPE_IP, MACAddress, describe_eth_type
+from .ethernet import ETH_TYPE_IP, MACAddress, describe_eth_type, ETH_TYPE_IPV6
+from .ip import IPv4Address, IPv6Address
 
 _FMT_ARP_FIXED_HDR = '>HHBBH'
 _STRUCT_ARP_FIXED_HDR = struct.Struct(_FMT_ARP_FIXED_HDR)
@@ -48,41 +49,49 @@ class ARPHeader(Header):
             'opcode': describe_opcode(self.opcode)}
         if self.protocol == ETH_TYPE_IP:
             dct['src_hardware_addr'] = MACAddress(self.src_hardware_addr)
-            dct['src_protocol_addr'] = ipaddress.IPv4Address(self.src_protocol_addr)
+            dct['src_protocol_addr'] = IPv4Address(self.src_protocol_addr)
             dct['dst_hardware_addr'] = MACAddress(self.dst_hardware_addr)
-            dct['dst_protocol_addr'] = ipaddress.IPv4Address(self.dst_protocol_addr)
+            dct['dst_protocol_addr'] = IPv4Address(self.dst_protocol_addr)
             return dct
-        raise ValueError(self.protocol)
+        if self.protocol == ETH_TYPE_IPV6:
+            dct['src_hardware_addr'] = MACAddress(self.src_hardware_addr)
+            dct['src_protocol_addr'] = IPv6Address(self.src_protocol_addr)
+            dct['dst_hardware_addr'] = MACAddress(self.dst_hardware_addr)
+            dct['dst_protocol_addr'] = IPv6Address(self.dst_protocol_addr)
+            return dct
+        raise NotSupportedError(self.protocol)
 
 
-def unpack_arp_packet(packet: bytes):
-    """
-    ARP packet format
+class ARP(Protocol):
 
-    16 bits hardware address space
-    16 bits protocol address space
-    8 bits  length of hardware address
-    8 bits  length of protocol address
-    16 bits opcode, request or reply
-    n bits  hardware address of sender
-    m bits  protocol address of sender
-    n bits  hardware address of receiver
-    m bits  protocol address of receiver
-    x bits  padding
-    """
-    hdr = ARPHeader()
-    hdr.hardware_type, hdr.protocol, hdr.hardware_addr_len, hdr.protocol_addr_len, hdr.opcode = _STRUCT_ARP_FIXED_HDR.unpack(
-        packet[:_LEN_ARP_FIXED_HDR])
-    packet = packet[_LEN_ARP_FIXED_HDR:]
-    idx_end = hdr.hardware_addr_len
-    hdr.src_hardware_addr = int.from_bytes(packet[:idx_end], BYTE_ORDER_NET)
-    idx_start = idx_end
-    idx_end += hdr.protocol_addr_len
-    hdr.src_protocol_addr = int.from_bytes(packet[idx_start:idx_start], BYTE_ORDER_NET)
-    idx_start = idx_end
-    idx_end += hdr.hardware_addr_len
-    hdr.dst_hardware_addr = int.from_bytes(packet[idx_start:idx_end], BYTE_ORDER_NET)
-    idx_start = idx_end
-    idx_end += hdr.protocol_addr_len
-    hdr.dst_protocol_addr = int.from_bytes(packet[idx_start:idx_end], BYTE_ORDER_NET)
-    return hdr, packet[idx_end:]
+    def unpack_data(self, data: bytes) -> Tuple[Header, bytes]:
+        """
+        ARP packet format
+
+        16 bits hardware address space
+        16 bits protocol address space
+        8 bits  length of hardware address
+        8 bits  length of protocol address
+        16 bits opcode, request or reply
+        n bits  hardware address of sender
+        m bits  protocol address of sender
+        n bits  hardware address of receiver
+        m bits  protocol address of receiver
+        x bits  padding
+        """
+        hdr = ARPHeader()
+        hdr.hardware_type, hdr.protocol, hdr.hardware_addr_len, hdr.protocol_addr_len, hdr.opcode = \
+            _STRUCT_ARP_FIXED_HDR.unpack(data[:_LEN_ARP_FIXED_HDR])
+        packet = data[_LEN_ARP_FIXED_HDR:]
+        idx_end = hdr.hardware_addr_len
+        hdr.src_hardware_addr = int.from_bytes(packet[:idx_end], BYTE_ORDER_NET)
+        idx_start = idx_end
+        idx_end += hdr.protocol_addr_len
+        hdr.src_protocol_addr = int.from_bytes(packet[idx_start:idx_start], BYTE_ORDER_NET)
+        idx_start = idx_end
+        idx_end += hdr.hardware_addr_len
+        hdr.dst_hardware_addr = int.from_bytes(packet[idx_start:idx_end], BYTE_ORDER_NET)
+        idx_start = idx_end
+        idx_end += hdr.protocol_addr_len
+        hdr.dst_protocol_addr = int.from_bytes(packet[idx_start:idx_end], BYTE_ORDER_NET)
+        return hdr, packet[idx_end:]

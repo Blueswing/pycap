@@ -4,7 +4,7 @@ from abc import ABCMeta
 from functools import lru_cache
 from typing import Union, Tuple, Optional
 
-from .base import Header
+from .base import Header, Protocol
 from .constants import *
 
 ETH_TYPE_IP = 0x0800
@@ -209,31 +209,33 @@ class Ethernet802_3Header(EthernetHeader):
         return {}
 
 
-def unpack_ethernet_packet(packet) -> Tuple[Union[EthernetIIHeader, Ethernet802_3Header], bytes]:
-    """
-    Ethernet II header, RFC 894
-        6 bytes destination MAC address
-        6 bytes source MAC address
-        2 bytes Ethernet type
-        46 ~ 1500 bytes payload
+class Ethernet(Protocol):
+
+    def unpack_data(self, data: bytes) -> Tuple[Union[EthernetIIHeader, Ethernet802_3Header], bytes]:
+        """
+        Ethernet II header, RFC 894
+            6 bytes destination MAC address
+            6 bytes source MAC address
+            2 bytes Ethernet type
+            46 ~ 1500 bytes payload
 
 
-    Ethernet 802.3 header, RFC 1042, IEEE 802
-        6 bytes destination MAC address
-        6 bytes source MAC address
-        2 bytes length
-        3 bytes LLC
-        5 bytes SNAP
-        38 ~ 1492 bytes payload
-    """
-    header, payload = packet[:14], packet[14:]
-    res = struct.unpack(_ETH_II_FMT, header)
-    dst_mac = int.from_bytes(res[:6], BYTE_ORDER_NET)
-    src_mac = int.from_bytes(res[6:12], BYTE_ORDER_NET)
-    if res[12] > 1500:
-        hdr = EthernetIIHeader(dst_mac, src_mac)
-        hdr.eth_type = res[12]
-    else:
-        hdr = Ethernet802_3Header(dst_mac, src_mac)
-        # todo
-    return hdr, payload
+        Ethernet 802.3 header, RFC 1042, IEEE 802
+            6 bytes destination MAC address
+            6 bytes source MAC address
+            2 bytes length
+            3 bytes LLC
+            5 bytes SNAP
+            38 ~ 1492 bytes payload
+        """
+        header, payload = data[:14], data[14:]
+        res = struct.unpack(_ETH_II_FMT, header)
+        dst_mac = int.from_bytes(res[:6], BYTE_ORDER_NET)
+        src_mac = int.from_bytes(res[6:12], BYTE_ORDER_NET)
+        if res[12] > 1500:
+            hdr = EthernetIIHeader(dst_mac, src_mac)
+            hdr.eth_type = res[12]
+        else:
+            hdr = Ethernet802_3Header(dst_mac, src_mac)
+            # todo
+        return hdr, payload

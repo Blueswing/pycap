@@ -2,9 +2,9 @@ import copy
 import ipaddress
 import socket
 import struct
-from typing import Tuple, Union, Optional
+from typing import Tuple, Optional
 
-from .base import Header
+from .base import Header, Protocol
 from .constants import *
 
 """
@@ -30,6 +30,9 @@ Internet header format
 References:
     https://www.rfc-editor.org/rfc/rfc791.txt
 """
+IPv4Address = ipaddress.IPv4Address
+IPv6Address = ipaddress.IPv6Address
+
 _IP_HEADER_FMT = '>BBHHHBBHII'
 
 _PROTO_MAP = {
@@ -48,11 +51,11 @@ def describe_protocol(proto):
 
 
 def get_local_ip_address():
-    return ipaddress.IPv4Address(socket.gethostbyname(socket.gethostname()))
+    return IPv4Address(socket.gethostbyname(socket.gethostname()))
 
 
 def get_ip_address(host):
-    return ipaddress.IPv4Address(socket.gethostbyname(host))
+    return IPv4Address(socket.gethostbyname(host))
 
 
 class IPv4Header(Header):
@@ -79,8 +82,8 @@ class IPv4Header(Header):
 
     def describe(self) -> dict:
         dct = copy.copy(self.__dict__)
-        dct['src_ip'] = ipaddress.IPv4Address(self.src_ip)
-        dct['dst_ip'] = ipaddress.IPv4Address(self.dst_ip)
+        dct['src_ip'] = IPv4Address(self.src_ip)
+        dct['dst_ip'] = IPv4Address(self.dst_ip)
         dct['protocol'] = describe_protocol(self.protocol)
         return dct
 
@@ -93,33 +96,36 @@ class IPv6Header(Header):
         self.dst_ip = dst_ip
 
     def describe(self) -> dict:
-        raise NotImplementedError()
+        return copy.copy(self.__dict__)
 
 
-def unpack_ip_packet(data: bytes) -> Tuple[Union[IPv4Header, IPv6Header], bytes]:
-    """
-    4 bit   version
-    4 bit   header length in 4 bytes
-    8 bit   type of service
-    16 bit  total length
-    16 bit  identification, used to differentiate packets from different datagrams
-    3 bit   flags, used to control fragments;
-                1st. bit is not used, must be zero
-                2nd. bit: DF, 0 = may fragment, 1 = don't fragment
-                3rd. bit: MF, 0 = last fragment, 1 = more fragments
-    13 bit  offsest in 8 bytes
-    8 bit   ttl
-    8 bit   protocol, the upper layer protocol
-    16 bit  checksum
-    32 bit  source IP address
-    32 bit  destination IP address
-    N bit   options
-    N bit   padding
-    N bit   payload data
-    """
-    byte_0 = data[0]
-    version = byte_0 >> 4
-    if version == 4:
+class IP(Protocol):
+
+    def unpack_data(self, data: bytes) -> Tuple[Header, bytes]:
+        """
+        4 bit   version
+        4 bit   header length in 4 bytes
+        8 bit   type of service
+        16 bit  total length
+        16 bit  identification, used to differentiate packets from different datagrams
+        3 bit   flags, used to control fragments;
+                    1st. bit is not used, must be zero
+                    2nd. bit: DF, 0 = may fragment, 1 = don't fragment
+                    3rd. bit: MF, 0 = last fragment, 1 = more fragments
+        13 bit  offsest in 8 bytes
+        8 bit   ttl
+        8 bit   protocol, the upper layer protocol
+        16 bit  checksum
+        32 bit  source IP address
+        32 bit  destination IP address
+        N bit   options
+        N bit   padding
+        N bit   payload data
+        """
+        byte_0 = data[0]
+        version = byte_0 >> 4
+        if version != 4:
+            raise ValueError(version)
         res = struct.unpack(_IP_HEADER_FMT, data[:20])
         header = IPv4Header(res[8], res[9])
         header.version = version
@@ -139,8 +145,14 @@ def unpack_ip_packet(data: bytes) -> Tuple[Union[IPv4Header, IPv6Header], bytes]
             header.options = data[20:20 + opt_len]
         payload = data[header.header_len:header.total_len]
         return header, payload
-    elif version == 6:
+
+
+class IPv6(Protocol):
+
+    def unpack_data(self, data: bytes) -> Tuple[Header, bytes]:
+        byte_0 = data[0]
+        version = byte_0 >> 4
+        if version != 6:
+            raise ValueError(version)
         # todo
         return IPv6Header(0, 0), b''
-    else:
-        raise ValueError(version)
