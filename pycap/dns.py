@@ -162,8 +162,8 @@ class DNS(Protocol):
             qry = DNSQuery()
             name, length = _parse_domain_name(raw_payload)
             qry.q_name = name
-            qry.q_type, qry.q_class = struct.unpack('>HH', raw_payload[idx:idx + 4])
             idx += length
+            qry.q_type, qry.q_class = struct.unpack('>HH', raw_payload[idx:idx + 4])
             payload_list.append(qry)
             idx += 4
 
