@@ -1,7 +1,7 @@
 from typing import Optional, Tuple
 
 
-class Header:
+class DataObject:
 
     def __str__(self):
         return str(self.__dict__)
@@ -9,12 +9,15 @@ class Header:
     def __repr__(self):
         return str(self.__dict__)
 
+    def describe(self) -> dict:
+        raise NotImplementedError()
+
+
+class Header(DataObject):
+
     @property
     def upper_layer_protocol(self) -> Optional[str]:
         return None
-
-    def describe(self) -> dict:
-        raise NotImplementedError()
 
 
 class Protocol:

@@ -134,8 +134,8 @@ class IP(Protocol):
         header.total_len = res[2]  # bytes
         header.id_frag = res[3]
         ident_3 = res[4] >> 13
-        header.df = bool((ident_3 >> 1) & 0x1)
-        header.mf = bool(ident_3 & 0x1)
+        header.df = (ident_3 >> 1) & 0x1
+        header.mf = ident_3 & 0x1
         header.offset = (res[4] & 0x1fff) * 8  # bytes
         header.ttl = res[5]
         header.protocol = res[6]

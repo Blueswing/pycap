@@ -3,14 +3,18 @@ import struct
 from typing import Optional, Tuple
 
 from .base import Header, Protocol
-from .constants import PROTOCOL_DNS, PROTOCOL_MDNS
+from .constants import PROTOCOL_DNS, PROTOCOL_MDNS, PROTOCOL_NETBIOS, PROTOCOL_SSDP
 
 _UDP_HDR_FMT = '>HHHH'
 struct_ = struct.Struct(_UDP_HDR_FMT)
 
 _PORT_PROTOCOL_MAP = {
     53: PROTOCOL_DNS,
-    5353: PROTOCOL_MDNS
+    5353: PROTOCOL_MDNS,
+    137: PROTOCOL_NETBIOS,
+    138: PROTOCOL_NETBIOS,
+    139: PROTOCOL_NETBIOS,
+    1900: PROTOCOL_SSDP
 }
 
 
