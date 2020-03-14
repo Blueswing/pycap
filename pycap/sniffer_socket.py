@@ -1,7 +1,7 @@
 import os
 import socket
 from .base import NotSupportedError
-from .ethernet import ETH_P_ALL
+from .ethernet import ETH_P_ALL, ETH_TYPE_IP
 
 
 def get_local_ip_address():
